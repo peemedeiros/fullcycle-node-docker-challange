@@ -1,0 +1,51 @@
+version: '3'
+
+services:
+  app:
+    build: ./app/
+    image: peemedeiros/node-challange
+    container_name: node
+    entrypoint: dockerize -wait tcp://db:3306 -timeout 20s docker-entrypoint.sh
+    tty: true
+    volumes:
+      - ./:/app
+    networks:
+      - bridge
+    expose:
+      - 3000
+    working_dir: /app
+    command: sh -c "npm install && node index.js"
+    depends_on:
+      - database
+
+  nginx:
+    build: ./nginx/
+    container_name: nginx_proxy
+    ports:
+      - "80:80"
+    depends_on:
+      - app
+    networks:
+      - bridge
+
+  database:
+    image: mysql:5.7
+    command: --innodb-use-native-aio=0
+    container_name: db
+    restart: always
+    tty: true
+    volumes:
+        - ./db:/var/lib/mysql
+        - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+        - MYSQL_ROOT_PASSWORD=password
+        - MYSQL_DATABASE=node
+    networks:
+        - bridge
+      
+networks:
+  bridge:
+    driver: bridge
+volumes:
+  mysql:
+    driver: local
